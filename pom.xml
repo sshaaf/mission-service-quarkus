@@ -41,6 +41,10 @@
       <artifactId>quarkus-smallrye-reactive-messaging-kafka</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-infinispan-client</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.mapbox.mapboxsdk</groupId>
       <artifactId>mapbox-sdk-services</artifactId>
       <version>${mapbox.version}</version>
