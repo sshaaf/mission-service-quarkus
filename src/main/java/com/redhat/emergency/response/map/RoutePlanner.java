@@ -17,6 +17,8 @@ import com.mapbox.core.constants.Constants;
 import com.mapbox.geojson.Point;
 import com.redhat.emergency.response.model.Location;
 import com.redhat.emergency.response.model.MissionStep;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,11 @@ public class RoutePlanner {
     @ConfigProperty(name = "mapbox.url", defaultValue = Constants.BASE_API_URL)
     String mapboxUrl;
 
-    public List<MissionStep> getDirections(Location origin, Location destination, Location waypoint) {
+    public Uni<List<MissionStep>> getDirections(Location origin, Location destination, Location waypoint) {
+        return Uni.createFrom().item(() -> getDirectionsInternal(origin, destination, waypoint)).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    private List<MissionStep> getDirectionsInternal(Location origin, Location destination, Location waypoint) {
 
         MapboxDirections request = MapboxDirections.builder()
                 .baseUrl(mapboxUrl)

@@ -6,6 +6,8 @@ import javax.inject.Inject;
 
 import com.redhat.emergency.response.model.Mission;
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -36,9 +38,13 @@ public class MissionRepository {
         }
     }
 
-    // todo put async, error handling
-    public void add(Mission mission) {
-        getCache().put(mission.getKey(), mission.toJson());
+    // error handling
+    public Uni<Void> add(Mission mission) {
+
+       return Uni.createFrom().<Void>item(() -> {
+            getCache().put(mission.getKey(), mission.toJson());
+            return null;
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
     private RemoteCache<String, String> getCache() {

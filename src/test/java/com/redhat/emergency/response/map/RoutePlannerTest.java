@@ -19,6 +19,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.redhat.emergency.response.model.Location;
 import com.redhat.emergency.response.model.MissionStep;
+import io.smallrye.mutiny.Uni;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,8 @@ public class RoutePlannerTest {
         Location start = Location.of(new BigDecimal("34.18323"), new BigDecimal("-77.90999"));
         Location destination = Location.of(new BigDecimal("34.1706"), new BigDecimal("-77.949"));
         Location waypoint = Location.of(new BigDecimal("34.18408"), new BigDecimal("-77.84856"));
-        List<MissionStep> steps = routePlanner.getDirections(start, destination, waypoint);
+        Uni<List<MissionStep>> uni = routePlanner.getDirections(start, destination, waypoint);
+        List<MissionStep> steps = uni.await().indefinitely();
 
         assertThat(steps, notNullValue());
         assertThat(steps.size(), equalTo(22));

@@ -6,6 +6,8 @@ import javax.enterprise.context.ApplicationScoped;
 
 import com.redhat.emergency.response.model.Mission;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.reactive.messaging.kafka.KafkaRecord;
 import io.vertx.core.json.JsonObject;
@@ -19,9 +21,17 @@ public class EventSink {
 
     private final UnicastProcessor<Pair<String, JsonObject>> processor = UnicastProcessor.create();
 
-    public void missionStarted(Mission mission) {
-        processor.onNext(ImmutablePair.of(mission.getIncidentId(),
-                messageHeaders(new JsonObject(), "MissionStartedEvent").put("body", JsonObject.mapFrom(mission))));
+    public Uni<Void> missionStarted(Mission mission) {
+        return missionEvent(mission, "MissionStartedEvent");
+    }
+
+    public Uni<Void> missionEvent(Mission mission, String type) {
+
+        return Uni.createFrom().<Void>item(() -> {
+            processor.onNext(ImmutablePair.of(mission.getIncidentId(),
+                    initMessage(new JsonObject(), type).put("body", JsonObject.mapFrom(mission))));
+            return null;
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
     @Outgoing("mission-event")
@@ -33,7 +43,7 @@ public class EventSink {
         return KafkaRecord.of(keyPayloadPair.getLeft(), keyPayloadPair.getRight().encode());
     }
 
-    private JsonObject messageHeaders(JsonObject json, String messageType) {
+    private JsonObject initMessage(JsonObject json, String messageType) {
 
         return json.put("id", UUID.randomUUID().toString())
                 .put("invokingService", "MissionService")

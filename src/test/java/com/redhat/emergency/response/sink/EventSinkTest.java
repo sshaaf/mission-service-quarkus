@@ -48,7 +48,7 @@ public class EventSinkTest {
 
         Mission mission = json.mapTo(Mission.class);
 
-        eventSink.missionStarted(mission);
+        eventSink.missionStarted(mission).await().indefinitely();
 
         assertThat(results.received().size(), equalTo(1));
         Message<String> message = results.received().get(0);
