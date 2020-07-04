@@ -1,5 +1,6 @@
 package com.redhat.emergency.response.repository;
 
+import java.util.Optional;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -8,6 +9,8 @@ import com.redhat.emergency.response.model.Mission;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.Json;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -38,13 +41,28 @@ public class MissionRepository {
         }
     }
 
-    // error handling
+    // todo: error handling
     public Uni<Void> add(Mission mission) {
 
        return Uni.createFrom().<Void>item(() -> {
             getCache().put(mission.getKey(), mission.toJson());
             return null;
         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    public Optional<Mission> get(String key) {
+        String s =  getCache().get(key);
+        if (s == null) {
+            return Optional.empty();
+        } else {
+            try {
+                Mission mission = Json.decodeValue(s, Mission.class);
+                return Optional.of(mission);
+            } catch (DecodeException e) {
+                log.error("Exception decoding mission with id = " + key, e);
+                return Optional.empty();
+            }
+        }
     }
 
     private RemoteCache<String, String> getCache() {

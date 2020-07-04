@@ -71,6 +71,7 @@ public class MissionCommandSource {
             JsonObject json = new JsonObject(messageAsJson);
             String messageType = json.getString("messageType");
             if (Arrays.asList(ACCEPTED_MESSAGE_TYPES).contains(messageType) && json.containsKey("body")) {
+                log.debug("Processing message: " + json.toString());
                 return Optional.of(json);
             }
             log.debug("Message with type '" + messageType + "' is ignored");
@@ -85,7 +86,7 @@ public class MissionCommandSource {
         try {
             Optional<Mission> mission = Optional.of(json.mapTo(Mission.class))
                     .filter(m -> m.getIncidentId() != null && !(m.getIncidentId().isBlank()))
-                    .filter(m -> m.getResponderId() != null && !(m.getIncidentId().isBlank()))
+                    .filter(m -> m.getResponderId() != null && !(m.getResponderId().isBlank()))
                     .filter(m -> m.getIncidentLat() != null && m.getIncidentLong() != null)
                     .filter(m -> m.getResponderStartLat() != null && m.getResponderStartLong() != null)
                     .filter(m -> m.getDestinationLat() != null && m.getDestinationLong() != null);

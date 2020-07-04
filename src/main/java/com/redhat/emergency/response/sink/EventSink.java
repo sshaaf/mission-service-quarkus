@@ -25,6 +25,14 @@ public class EventSink {
         return missionEvent(mission, "MissionStartedEvent");
     }
 
+    public Uni<Void> missionPickedUp(Mission mission) {
+        return missionEvent(mission, "MissionPickedUpEvent");
+    }
+
+    public Uni<Void> missionCompleted(Mission mission) {
+        return missionEvent(mission, "MissionCompletedEvent");
+    }
+
     public Uni<Void> missionEvent(Mission mission, String type) {
 
         return Uni.createFrom().<Void>item(() -> {
