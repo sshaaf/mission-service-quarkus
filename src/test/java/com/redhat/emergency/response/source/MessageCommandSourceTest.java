@@ -18,6 +18,7 @@ import javax.inject.Inject;
 import com.redhat.emergency.response.map.RoutePlanner;
 import com.redhat.emergency.response.model.Location;
 import com.redhat.emergency.response.model.Mission;
+import com.redhat.emergency.response.model.MissionStatus;
 import com.redhat.emergency.response.model.MissionStep;
 import com.redhat.emergency.response.repository.MissionRepository;
 import com.redhat.emergency.response.sink.EventSink;
@@ -102,6 +103,7 @@ public class MessageCommandSourceTest {
         assertThat(mission.getDestinationLat(), equalTo(new BigDecimal("50.12345")));
         assertThat(mission.getDestinationLong(), equalTo(new BigDecimal("-90.98765")));
         assertThat(mission.getSteps().size(), equalTo(2));
+        assertThat(mission.getStatus(), equalTo(MissionStatus.CREATED.name()));
         verify(routePlanner).getDirections(locationCaptor.capture(),locationCaptor.capture(), locationCaptor.capture());
         Location location1 = locationCaptor.getAllValues().get(0);
         Location location2 = locationCaptor.getAllValues().get(1);
@@ -127,6 +129,7 @@ public class MessageCommandSourceTest {
         assertThat(mission.getDestinationLat(), equalTo(new BigDecimal("50.12345")));
         assertThat(mission.getDestinationLong(), equalTo(new BigDecimal("-90.98765")));
         assertThat(mission.getSteps().size(), equalTo(2));
+        assertThat(mission.getStatus(), equalTo(MissionStatus.CREATED.name()));
     }
 
     @Test

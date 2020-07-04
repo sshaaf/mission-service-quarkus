@@ -8,6 +8,7 @@ import javax.inject.Inject;
 
 import com.redhat.emergency.response.map.RoutePlanner;
 import com.redhat.emergency.response.model.Mission;
+import com.redhat.emergency.response.model.MissionStatus;
 import com.redhat.emergency.response.repository.MissionRepository;
 import com.redhat.emergency.response.sink.EventSink;
 import io.smallrye.mutiny.Uni;
@@ -42,6 +43,7 @@ public class MissionCommandSource {
         return Uni.createFrom().item(missionCommandMessage)
                 .onItem().apply(mcm -> accept(missionCommandMessage.getPayload()))
                 .onItem().apply(o -> o.flatMap(j -> validate(j.getJsonObject("body"))).orElse(null))
+                .onItem().ifNotNull().apply(m -> m.status(MissionStatus.CREATED))
                 .onItem().ifNotNull().produceUni(this::addRoute)
                 .onItem().ifNotNull().produceUni(this::addToRepositoryAsync)
                 .onItem().ifNotNull().produceUni(this::publishMissionStartedEventAsync)

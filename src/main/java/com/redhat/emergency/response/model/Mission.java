@@ -87,6 +87,11 @@ public class Mission {
         return status;
     }
 
+    public Mission status(MissionStatus status) {
+        this.status = status.name();
+        return this;
+    }
+
     public List<MissionStep> getSteps() {
         return steps;
     }

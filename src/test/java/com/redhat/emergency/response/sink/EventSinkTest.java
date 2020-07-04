@@ -44,7 +44,8 @@ public class EventSinkTest {
                 .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
                 .put("responderId", "responder123")
                 .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
-                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue());
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED");
 
         Mission mission = json.mapTo(Mission.class);
 
@@ -75,6 +76,7 @@ public class EventSinkTest {
         assertThat(value, jsonNodeAbsent("body.steps[0]"));
         assertThat(value, jsonNodePresent("body.responderLocationHistory"));
         assertThat(value, jsonNodeAbsent("body.responderLocationHistory[0]"));
+        assertThat(value, jsonPartEquals("body.status", "CREATED"));
     }
 
 }

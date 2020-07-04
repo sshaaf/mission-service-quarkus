@@ -59,7 +59,8 @@ public class MissionRepositoryTest {
                 .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
                 .put("responderId", "responder123")
                 .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
-                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue());
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED");
 
         Mission mission = json.mapTo(Mission.class);
 
@@ -81,6 +82,7 @@ public class MissionRepositoryTest {
         assertThat(value, jsonNodeAbsent("steps[0]"));
         assertThat(value, jsonNodePresent("responderLocationHistory"));
         assertThat(value, jsonNodeAbsent("responderLocationHistory[0]"));
+        assertThat(value, jsonPartEquals("status", "CREATED"));
     }
 
 
