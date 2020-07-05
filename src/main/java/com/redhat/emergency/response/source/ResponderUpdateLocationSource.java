@@ -48,7 +48,9 @@ public class ResponderUpdateLocationSource {
             ResponderLocationHistory rlh = new ResponderLocationHistory(BigDecimal.valueOf(locationUpdate.getDouble("lat")),
                     BigDecimal.valueOf(locationUpdate.getDouble("lon")), Instant.now().toEpochMilli());
             mission.get().getResponderLocationHistory().add(rlh);
-            return emitMissionEvent(locationUpdate.getString("status"), mission.get()).onItem().produceUni(m -> repository.add(m));
+            return emitMissionEvent(locationUpdate.getString("status"), mission.get())
+                    .onItem().produceUni(m -> emitUpdateResponderCommand(m, locationUpdate))
+                    .onItem().produceUni(m -> repository.add(m));
         } else {
             log.warn("Mission with key = " + getKey(locationUpdate) + " not found in the repository.");
         }
@@ -62,14 +64,21 @@ public class ResponderUpdateLocationSource {
         } else if (ResponderLocationStatus.DROPPED.name().equals(status)) {
             mission.status(MissionStatus.COMPLETED);
             return eventSink.missionCompleted(mission).map(v -> mission);
-            // todo: UpdateResponderCommand
         } else {
             //do nothing
             return Uni.createFrom().item(mission);
         }
     }
 
-
+    private Uni<Mission> emitUpdateResponderCommand(Mission mission, JsonObject locationUpdate) {
+        if (ResponderLocationStatus.DROPPED.name().equals(locationUpdate.getString("status"))) {
+            return eventSink.responderCommand(mission, BigDecimal.valueOf(locationUpdate.getDouble("lat")),
+                    BigDecimal.valueOf(locationUpdate.getDouble("lon")), locationUpdate.getBoolean("human"))
+                    .map(v -> mission);
+        } else {
+            return Uni.createFrom().item(mission);
+        }
+    }
 
     private JsonObject getLocationUpdate(String payload) {
         try {

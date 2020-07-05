@@ -33,6 +33,7 @@ public class EventSinkTest {
     @BeforeEach
     void init() {
         connector.sink("mission-event").clear();
+        connector.sink("responder-command").clear();
     }
 
     @Test
@@ -165,6 +166,78 @@ public class EventSinkTest {
         assertThat(value, jsonNodePresent("body.responderLocationHistory"));
         assertThat(value, jsonNodeAbsent("body.responderLocationHistory[0]"));
         assertThat(value, jsonPartEquals("body.status", "COMPLETED"));
+    }
+
+    @Test
+    void testResponderCommand() {
+
+        InMemorySink<String> results = connector.sink("responder-command");
+
+        JsonObject json = new JsonObject().put("incidentId", "incident123")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder123")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "COMPLETED");
+
+        Mission mission = json.mapTo(Mission.class);
+
+        eventSink.responderCommand(mission, new BigDecimal("30.98765"), new BigDecimal("-70.12345"), false).await().indefinitely();
+
+        assertThat(results.received().size(), equalTo(1));
+        Message<String> message = results.received().get(0);
+        assertThat(message, instanceOf(OutgoingKafkaRecord.class));
+        String value = message.getPayload();
+        String key = ((OutgoingKafkaRecord<String, String>)message).getKey();
+        assertThat(key, equalTo("responder123"));
+        assertThat(value, jsonNodePresent("id"));
+        assertThat(value, jsonPartEquals("id", "${json-unit.regex}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"));
+        assertThat(value, jsonPartEquals("messageType", "UpdateResponderCommand"));
+        assertThat(value, jsonPartEquals("invokingService", "MissionService"));
+        assertThat(value, jsonNodePresent("timestamp"));
+        assertThat(value, jsonNodePresent("body"));
+        assertThat(value, jsonNodePresent("body.responder"));
+        assertThat(value, jsonPartEquals("body.responder.id", "responder123"));
+        assertThat(value, jsonPartEquals("body.responder.latitude", 30.98765));
+        assertThat(value, jsonPartEquals("body.responder.longitude", -70.12345));
+        assertThat(value, jsonPartEquals("body.responder.available", true));
+        assertThat(value, jsonPartEquals("body.responder.enrolled", true));
+    }
+
+    @Test
+    void testResponderCommandWhenPersonResponder() {
+
+        InMemorySink<String> results = connector.sink("responder-command");
+
+        JsonObject json = new JsonObject().put("incidentId", "incident123")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder123")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "COMPLETED");
+
+        Mission mission = json.mapTo(Mission.class);
+
+        eventSink.responderCommand(mission, new BigDecimal("30.98765"), new BigDecimal("-70.12345"), true).await().indefinitely();
+
+        assertThat(results.received().size(), equalTo(1));
+        Message<String> message = results.received().get(0);
+        assertThat(message, instanceOf(OutgoingKafkaRecord.class));
+        String value = message.getPayload();
+        String key = ((OutgoingKafkaRecord<String, String>)message).getKey();
+        assertThat(key, equalTo("responder123"));
+        assertThat(value, jsonNodePresent("id"));
+        assertThat(value, jsonPartEquals("id", "${json-unit.regex}[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"));
+        assertThat(value, jsonPartEquals("messageType", "UpdateResponderCommand"));
+        assertThat(value, jsonPartEquals("invokingService", "MissionService"));
+        assertThat(value, jsonNodePresent("timestamp"));
+        assertThat(value, jsonNodePresent("body"));
+        assertThat(value, jsonNodePresent("body.responder"));
+        assertThat(value, jsonPartEquals("body.responder.id", "responder123"));
+        assertThat(value, jsonPartEquals("body.responder.latitude", 30.98765));
+        assertThat(value, jsonPartEquals("body.responder.longitude", -70.12345));
+        assertThat(value, jsonPartEquals("body.responder.available", true));
+        assertThat(value, jsonPartEquals("body.responder.enrolled", false));
     }
 
 }

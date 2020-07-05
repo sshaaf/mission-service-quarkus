@@ -1,5 +1,6 @@
 package com.redhat.emergency.response.sink;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import javax.enterprise.context.ApplicationScoped;
@@ -19,7 +20,9 @@ import org.eclipse.microprofile.reactive.messaging.Outgoing;
 @ApplicationScoped
 public class EventSink {
 
-    private final UnicastProcessor<Pair<String, JsonObject>> processor = UnicastProcessor.create();
+    private final UnicastProcessor<Pair<String, JsonObject>> missionProcessor = UnicastProcessor.create();
+
+    private final UnicastProcessor<Pair<String, JsonObject>> responderProcessor = UnicastProcessor.create();
 
     public Uni<Void> missionStarted(Mission mission) {
         return missionEvent(mission, "MissionStartedEvent");
@@ -36,15 +39,31 @@ public class EventSink {
     public Uni<Void> missionEvent(Mission mission, String type) {
 
         return Uni.createFrom().<Void>item(() -> {
-            processor.onNext(ImmutablePair.of(mission.getIncidentId(),
+            missionProcessor.onNext(ImmutablePair.of(mission.getIncidentId(),
                     initMessage(new JsonObject(), type).put("body", JsonObject.mapFrom(mission))));
             return null;
         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
+    public Uni<Void> responderCommand(Mission mission, BigDecimal lat, BigDecimal lon, Boolean person) {
+        return Uni.createFrom().<Void>item(() -> {
+            responderProcessor.onNext(ImmutablePair.of(mission.getResponderId(),
+                    initMessage(new JsonObject(), "UpdateResponderCommand")
+                            .put("body", new JsonObject().put("responder", new JsonObject().put("id", mission.getResponderId())
+                            .put("latitude", lat.doubleValue()).put("longitude", lon.doubleValue()).put("available", true)
+                            .put("enrolled", !person)))));
+            return null;
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
     @Outgoing("mission-event")
-    public Multi<Message<String>> responderEvent() {
-        return processor.onItem().apply(this::toMessage);
+    public Multi<Message<String>> missionEvent() {
+        return missionProcessor.onItem().apply(this::toMessage);
+    }
+
+    @Outgoing("responder-command")
+    public Multi<Message<String>> responderCommand() {
+        return responderProcessor.onItem().apply(this::toMessage);
     }
 
     private Message<String> toMessage(Pair<String, JsonObject> keyPayloadPair) {
