@@ -4,6 +4,7 @@ import static net.javacrumbs.jsonunit.JsonMatchers.jsonNodeAbsent;
 import static net.javacrumbs.jsonunit.JsonMatchers.jsonNodePresent;
 import static net.javacrumbs.jsonunit.JsonMatchers.jsonPartEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -16,6 +17,10 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 
 import com.redhat.emergency.response.model.Mission;
@@ -24,6 +29,7 @@ import io.vertx.core.json.JsonObject;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.RemoteCacheManagerAdmin;
+import org.infinispan.commons.util.CloseableIteratorSetAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -131,6 +137,102 @@ public class MissionRepositoryTest {
         assertThat(mission, notNullValue());
         assertThat(mission.isPresent(), is(false));
         verify(missionCache).get("key");
+    }
+
+    @Test
+    void testGetAll() {
+
+        JsonObject json1 = new JsonObject().put("incidentId", "incident123")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder123")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED")
+                .put("responderLocationHistory", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("timestamp", 12345L)))
+                .put("steps", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("wayPoint", false).put("destination", false)));
+
+        JsonObject json2 = new JsonObject().put("incidentId", "incident456")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder456")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED")
+                .put("responderLocationHistory", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("timestamp", 12345L)))
+                .put("steps", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("wayPoint", false).put("destination", false)));
+
+        when(missionCache.keySet()).thenReturn(new CloseableIteratorSetAdapter<>(new HashSet<>(Arrays.asList("incident123:responder123", "incident456:responder456"))));
+        when(missionCache.get("incident123:responder123")).thenReturn(json1.toString());
+        when(missionCache.get("incident456:responder456")).thenReturn(json2.toString());
+
+        List<Mission> missions = repository.getAll().await().indefinitely();
+
+        assertThat(missions, notNullValue());
+        assertThat(missions.size(), equalTo(2));
+        assertThat(missions.get(0).getIncidentId(), anyOf(equalTo("incident123"), equalTo("incident456")));
+        verify(missionCache).keySet();
+        verify(missionCache).get("incident123:responder123");
+        verify(missionCache).get("incident456:responder456");
+    }
+
+    @Test
+    void testGetAllCacheEmpty() {
+
+        when(missionCache.keySet()).thenReturn(new CloseableIteratorSetAdapter<>(Collections.emptySet()));
+
+        List<Mission> missions = repository.getAll().await().indefinitely();
+
+        assertThat(missions, notNullValue());
+        assertThat(missions.size(), equalTo(0));
+    }
+
+    @Test
+    void clear() {
+
+        repository.clear().await().indefinitely();
+
+        verify(missionCache).clear();
+    }
+
+    @Test
+    void testGetByResponderId() {
+        JsonObject json1 = new JsonObject().put("incidentId", "incident123")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder123")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED")
+                .put("responderLocationHistory", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("timestamp", 12345L)))
+                .put("steps", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("wayPoint", false).put("destination", false)));
+
+        JsonObject json2 = new JsonObject().put("incidentId", "incident456")
+                .put("incidentLat", new BigDecimal("30.12345").doubleValue()).put("incidentLong", new BigDecimal("-70.98765").doubleValue())
+                .put("responderId", "responder456")
+                .put("responderStartLat", new BigDecimal("31.12345").doubleValue()).put("responderStartLong", new BigDecimal("-71.98765").doubleValue())
+                .put("destinationLat", new BigDecimal("32.12345").doubleValue()).put("destinationLong", new BigDecimal("-72.98765").doubleValue())
+                .put("status", "CREATED")
+                .put("responderLocationHistory", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("timestamp", 12345L)))
+                .put("steps", new JsonArray().add(new JsonObject().put("lat", new BigDecimal("30.98765").doubleValue())
+                        .put("lon", new BigDecimal("-70.12345").doubleValue()).put("wayPoint", false).put("destination", false)));
+
+        when(missionCache.keySet()).thenReturn(new CloseableIteratorSetAdapter<>(new HashSet<>(Arrays.asList("incident123:responder123", "incident456:responder456"))));
+        when(missionCache.get("incident123:responder123")).thenReturn(json1.toString());
+        when(missionCache.get("incident456:responder456")).thenReturn(json2.toString());
+
+        List<Mission> missions =  repository.getByResponderId("responder456").await().indefinitely();
+
+        assertThat(missions, notNullValue());
+        assertThat(missions.size(), equalTo(1));
+        assertThat(missions.get(0).getIncidentId(), equalTo("incident456"));
+        verify(missionCache).keySet();
+        verify(missionCache).get("incident123:responder123");
+        verify(missionCache).get("incident456:responder456");
     }
 
     private void setField(Object targetObject, String name, Object value) {

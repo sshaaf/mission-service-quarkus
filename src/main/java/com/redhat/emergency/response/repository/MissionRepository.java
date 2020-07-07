@@ -1,6 +1,9 @@
 package com.redhat.emergency.response.repository;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -63,6 +66,43 @@ public class MissionRepository {
                 return Optional.empty();
             }
         }
+    }
+
+    public Uni<List<Mission>> getAll() {
+        return Uni.createFrom().<List<Mission>>item(() -> {
+            return getCache().keySet().stream().map(key -> {
+                Mission mission = null;
+                try {
+                    mission = Json.decodeValue(getCache().get(key), Mission.class);
+                } catch (DecodeException e) {
+                    log.error("Exception decoding mission with id = " + key, e);
+                }
+                return mission;
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    public Uni<Void> clear() {
+
+        return Uni.createFrom().<Void>item(() -> {
+            getCache().clear();
+            return null;
+        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+
+    }
+
+    public Uni<List<Mission>> getByResponderId(String responderId) {
+
+        return Uni.createFrom().item(() -> getCache().keySet().stream().map(key -> {
+            Mission mission = null;
+            try {
+                mission = Json.decodeValue(getCache().get(key), Mission.class);
+            } catch (DecodeException e) {
+                log.error("Exception decoding mission with id = " + key, e);
+            }
+            return mission;
+        }).filter(Objects::nonNull).filter(m -> m.getResponderId().equals(responderId)).collect(Collectors.toList()))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
     private RemoteCache<String, String> getCache() {
