@@ -16,9 +16,13 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.reactive.messaging.Message;
 import org.eclipse.microprofile.reactive.messaging.Outgoing;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class EventSink {
+
+    private static final Logger log = LoggerFactory.getLogger(EventSink.class);
 
     private final UnicastProcessor<Pair<String, JsonObject>> missionProcessor = UnicastProcessor.create();
 
@@ -58,12 +62,18 @@ public class EventSink {
 
     @Outgoing("mission-event")
     public Multi<Message<String>> missionEvent() {
-        return missionProcessor.onItem().apply(this::toMessage);
+        return missionProcessor.onItem().apply(p -> {
+            log.debug("Sending message to mission-event channel. Key: " + p.getLeft() + " - Message = " + p.getRight().encode());
+            return toMessage(p);
+        });
     }
 
     @Outgoing("responder-command")
     public Multi<Message<String>> responderCommand() {
-        return responderProcessor.onItem().apply(this::toMessage);
+        return responderProcessor.onItem().apply(p -> {
+            log.debug("Sending message to responder-command channel. Key: " + p.getLeft() + " - Message = " + p.getRight().encode());
+            return toMessage(p);
+        });
     }
 
     private Message<String> toMessage(Pair<String, JsonObject> keyPayloadPair) {
