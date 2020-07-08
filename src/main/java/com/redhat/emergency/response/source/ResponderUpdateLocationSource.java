@@ -92,6 +92,7 @@ public class ResponderUpdateLocationSource {
                 log.warn("Unexpected message structure. Message is ignored");
                 return null;
             }
+            log.debug("Processing message: " + json.toString());
             return json;
         } catch (Exception e) {
             log.warn("Unexpected message structure. Message is ignored");
