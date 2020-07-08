@@ -63,8 +63,8 @@ public class RoutePlanner {
                 legs.orElse(Collections.emptyList()).stream().flatMap(r -> Optional.ofNullable(r.steps()).orElse(Collections.emptyList()).stream())
                 .map(l -> {
                     Point p = l.maneuver().location();
-                    MissionStep.Builder builder = MissionStep.builder(BigDecimal.valueOf(p.latitude()).setScale(5, RoundingMode.HALF_UP),
-                            BigDecimal.valueOf(p.longitude()).setScale(5, RoundingMode.HALF_UP));
+                    MissionStep.Builder builder = MissionStep.builder(BigDecimal.valueOf(p.latitude()).setScale(4, RoundingMode.HALF_UP),
+                            BigDecimal.valueOf(p.longitude()).setScale(4, RoundingMode.HALF_UP));
                     if ("arrive".equalsIgnoreCase(l.maneuver().type())) {
                         Optional<MissionStep> step = missionSteps.stream().filter(MissionStep::isWayPoint).findFirst();
                         if (step.isEmpty()) {
