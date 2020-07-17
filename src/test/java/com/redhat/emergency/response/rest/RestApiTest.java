@@ -52,7 +52,7 @@ public class RestApiTest {
 
         String response = RestAssured.get("/api/missions").then()
                 .assertThat()
-                .statusCode(201)
+                .statusCode(200)
                 .contentType("application/json")
                 .extract()
                 .asString();
@@ -103,7 +103,7 @@ public class RestApiTest {
 
         RestAssured.given().header(new Header("Accept", "application/json")).get("/api/missions/responders/64").then()
                 .assertThat()
-                .statusCode(201)
+                .statusCode(200)
                 .contentType("application/json")
                 .body("id", equalTo("f5a9bc5e-408c-4f86-8592-6f67bb73c5ff"));
 

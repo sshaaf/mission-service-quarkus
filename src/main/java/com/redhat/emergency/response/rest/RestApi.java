@@ -17,8 +17,8 @@ public class RestApi {
 
     @Route(path = "/api/missions", methods = HttpMethod.GET, produces = "application/json")
     void allMissions(RoutingExchange ex) {
-        repository.getAll().subscribe().with(m -> ex.response().putHeader("Content-Type", "application/json")
-                .setStatusCode(201).end(Json.encode(m)));
+        repository.getAll().subscribe().with(missions -> ex.response().putHeader("Content-Type", "application/json")
+                .setStatusCode(200).end(Json.encode(missions)));
     }
 
     @Route(path = "/api/missions/clear", methods = HttpMethod.GET, produces = "application/json")
@@ -33,8 +33,8 @@ public class RestApi {
         ex.getParam("id").ifPresentOrElse(responderId -> repository.getByResponderId(responderId).onItem()
                 .apply(l -> l.stream()
                         .filter(m -> m.getStatus().equalsIgnoreCase("UPDATED") || (m.getStatus().equalsIgnoreCase("CREATED"))).findFirst())
-                .subscribe().with(o -> o.ifPresentOrElse(m -> ex.response().putHeader("Content-Type", "application/json").setStatusCode(201)
-                    .end(Json.encode(m)), () -> ex.response().setStatusCode(204).end())), () -> ex.response().setStatusCode(204).end());
+                .subscribe().with(o -> o.ifPresentOrElse(m -> ex.response().putHeader("Content-Type", "application/json").setStatusCode(200)
+                        .end(Json.encode(m)), () -> ex.response().setStatusCode(204).end())), () -> ex.response().setStatusCode(204).end());
     }
 
 }
