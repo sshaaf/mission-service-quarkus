@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.List;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -67,6 +68,28 @@ public class RoutePlannerTest {
         assertThat(steps.get(13).isDestination(), equalTo(false));
         assertThat(steps.get(21).isWayPoint(), equalTo(false));
         assertThat(steps.get(21).isDestination(), equalTo(true));
+    }
+
+    @Test
+    void testRoutePlannerNoRouteFound() throws IOException {
+
+        String url = "/directions/v5/mapbox/driving/-87.90999,34.18323;-87.84856,34.18408;-87.949,34.1706?access_token=pk.replaceme&geometries=polyline6&overview=full&steps=true";
+        InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream("mapbox/directions.json");
+        String json = IOUtils.toString(is, Charset.defaultCharset());
+        mockServer.stubFor(get(urlEqualTo(url))
+                .willReturn(aResponse().withStatus(503)));
+        Location start = Location.of(new BigDecimal("34.18323"), new BigDecimal("-87.90999"));
+        Location destination = Location.of(new BigDecimal("34.1706"), new BigDecimal("-87.949"));
+        Location waypoint = Location.of(new BigDecimal("34.18408"), new BigDecimal("-87.84856"));
+
+        Uni<List<MissionStep>> uni = Uni.createFrom().voidItem().onItem()
+                .transformToUni(v -> routePlanner.getDirections(start, destination, waypoint))
+                .onFailure(RoutePlannerException.class).recoverWithItem(Collections.emptyList());
+
+        List<MissionStep> steps = uni.await().indefinitely();
+
+        assertThat(steps, notNullValue());
+        assertThat(steps.size(), equalTo(0));
     }
 
     private void setField(Object targetObject, String name, Object value) {
