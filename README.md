@@ -1,6 +1,11 @@
 ### mission-service-quarkus
 
-*Implementation notes*
+Service responsible for the management of *missions*.
+Implemented with Quarkus.
+
+**Implementation notes**
+
+_Dependency of unit tests to a running Infinispan instance_
 
 When using the Quarkus Infinispan client extension, unit tests with QuarkusTest expect a running Infinispan server, even if the CDI Bean managing the cache is mocked out or replaced by a CDI alternative.
 
@@ -23,3 +28,14 @@ The solution applied here consists of:
           }
       }
   ```
+  
+ _Error handling with Reactive Messaging and Kafka_
+ 
+ The Smallrye Reactive Messaging for Kafka has a number of built-in failure strategies for when a message cannot be acked.
+ These include `ignore`, `fail`, `dead-letter-queue`. The default is `fail`, which means that the Kafka consumer will stop consuming messages. The same happens when uncaught exceptions are bubbled up to the consumer.
+ 
+ The mission service has a custom implementation for error handling when consuming _CreateMissionCommand_ messages.  
+ In case of an error (e.g. the MapBox API is down, or there is an issue with Data Grid), the consumer for the partition of the faulty message is paused, and the message is not acked.  
+ After a configurable delay, the consumer is resumed again, starting to consume from the message that caused the error. If the error situation is still present, the consumer is again paused. 
+ In order to avoid a retry storm, the pause delay increases until a maximum length.
+ 

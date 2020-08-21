@@ -12,6 +12,7 @@ import com.redhat.emergency.response.model.MissionStatus;
 import com.redhat.emergency.response.repository.MissionRepository;
 import com.redhat.emergency.response.sink.EventSink;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.reactive.messaging.kafka.IncomingKafkaRecordMetadata;
 import io.vertx.core.json.JsonObject;
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
@@ -36,19 +37,39 @@ public class MissionCommandSource {
     @Inject
     EventSink eventSink;
 
+    @Inject
+    MissionSourceRebalanceListener rebalanceListener;
+
     @Incoming("mission-command")
     @Acknowledgment(Acknowledgment.Strategy.MANUAL)
     public Uni<CompletionStage<Void>> process(Message<String> missionCommandMessage) {
 
         return Uni.createFrom().item(missionCommandMessage)
+                .onItem().transform(mcm -> {
+                    IncomingKafkaRecordMetadata<String, String> metadata = metadata(mcm);
+                    if (metadata != null) {
+                        rebalanceListener.setOffset(metadata.getTopic(), metadata.getPartition(), metadata.getOffset());
+                    }
+                    return mcm;
+                })
                 .onItem().transform(mcm -> accept(missionCommandMessage.getPayload()))
-                .onItem().transform(o -> o.flatMap(j -> validate(j.getJsonObject("body"))).orElseThrow(() -> new IllegalStateException("Message ignored")))
+                .onItem().transform(o -> o.flatMap(j -> validate(j.getJsonObject("body"))).orElseThrow(MessageIgnoredException::new))
                 .onItem().transform(m -> m.status(MissionStatus.CREATED))
                 .onItem().transformToUni(this::addRoute)
                 .onItem().transformToUni(this::addToRepositoryAsync)
                 .onItem().transformToUni(this::publishMissionStartedEventAsync)
                 .onItem().transform(m -> missionCommandMessage.ack())
-                .onFailure().recoverWithItem(t -> missionCommandMessage.ack());
+                .onFailure(MessageIgnoredException.class).recoverWithItem(t -> missionCommandMessage.ack())
+                .onFailure().recoverWithItem(t -> {
+                    log.error(t.getMessage(), t);
+                    IncomingKafkaRecordMetadata<String, String> metadata = metadata(missionCommandMessage);
+                    if (metadata != null) {
+                        return rebalanceListener.pause(metadata.getTopic(), metadata.getPartition(), metadata.getOffset());
+                    } else {
+                        log.warn("Not able to extract metadata from message. Acking message");
+                        return missionCommandMessage.ack();
+                    }
+                });
     }
 
     private Uni<Mission> addRoute(Mission mission) {
@@ -99,6 +120,10 @@ public class MissionCommandSource {
             log.error("Exception when deserializing message body into Mission object:", e);
         }
         return Optional.empty();
+    }
+
+    private IncomingKafkaRecordMetadata<String, String> metadata(Message<String> missionCommandMessage) {
+        return missionCommandMessage.getMetadata(IncomingKafkaRecordMetadata.class).orElse(null);
     }
 
 }

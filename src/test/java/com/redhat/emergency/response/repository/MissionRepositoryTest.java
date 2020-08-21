@@ -12,7 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.initMocks;
+import static org.mockito.MockitoAnnotations.openMocks;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -54,7 +54,7 @@ public class MissionRepositoryTest {
 
     @BeforeEach
     void init() {
-        initMocks(this);
+        openMocks(this);
         repository = new MissionRepository();
         setField(repository, "cacheName", "mission");
         setField(repository, "cacheManager", cacheManager);

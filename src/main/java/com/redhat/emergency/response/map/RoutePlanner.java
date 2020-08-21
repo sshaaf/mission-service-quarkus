@@ -53,11 +53,11 @@ public class RoutePlanner {
                 .build();
         List<MissionStep> missionSteps = new ArrayList<>();
         try {
-
             Response<DirectionsResponse> response = request.executeCall();
 
             if (response.body() == null || response.body().routes().isEmpty()) {
                 log.warn("No routes found; check access token, rights and coordinates");
+                throw new RoutePlannerException("No route found");
             } else {
                 Optional<List<RouteLeg>> legs = Optional.ofNullable(response.body().routes().get(0).legs());
                 legs.orElse(Collections.emptyList()).stream().flatMap(r -> Optional.ofNullable(r.steps()).orElse(Collections.emptyList()).stream())
@@ -78,6 +78,7 @@ public class RoutePlanner {
             }
         } catch (IOException e) {
             log.error("Exception while calling MapBox API", e);
+            throw new RoutePlannerException(e.getMessage(), e);
         }
         return missionSteps;
     }
