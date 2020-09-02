@@ -56,7 +56,7 @@ public class RoutePlanner {
             Response<DirectionsResponse> response = request.executeCall();
 
             if (response.body() == null || response.body().routes().isEmpty()) {
-                log.warn("No routes found; check access token, rights and coordinates");
+                log.warn("No routes found; check access token, rights and coordinates. Origin: " + origin + "; Destination: " + destination + "; Waypoint: " + waypoint);
                 throw new RoutePlannerException("No route found");
             } else {
                 Optional<List<RouteLeg>> legs = Optional.ofNullable(response.body().routes().get(0).legs());
