@@ -1,6 +1,5 @@
 package com.redhat.emergency.response.sink;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import javax.enterprise.context.ApplicationScoped;
@@ -45,17 +44,6 @@ public class EventSink {
         return Uni.createFrom().<Void>item(() -> {
             missionProcessor.onNext(ImmutablePair.of(mission.getIncidentId(),
                     initMessage(new JsonObject(), type).put("body", JsonObject.mapFrom(mission))));
-            return null;
-        }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
-    }
-
-    public Uni<Void> responderCommand(Mission mission, BigDecimal lat, BigDecimal lon, Boolean person) {
-        return Uni.createFrom().<Void>item(() -> {
-            responderProcessor.onNext(ImmutablePair.of(mission.getResponderId(),
-                    initMessage(new JsonObject(), "UpdateResponderCommand")
-                            .put("body", new JsonObject().put("responder", new JsonObject().put("id", mission.getResponderId())
-                            .put("latitude", lat.doubleValue()).put("longitude", lon.doubleValue()).put("available", true)
-                            .put("enrolled", !person)))));
             return null;
         }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
