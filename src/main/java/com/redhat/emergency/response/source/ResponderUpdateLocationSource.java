@@ -49,7 +49,6 @@ public class ResponderUpdateLocationSource {
                     BigDecimal.valueOf(locationUpdate.getDouble("lon")), Instant.now().toEpochMilli());
             mission.get().getResponderLocationHistory().add(rlh);
             return emitMissionEvent(locationUpdate.getString("status"), mission.get())
-                    .onItem().transformToUni(m -> emitUpdateResponderCommand(m, locationUpdate))
                     .onItem().transformToUni(m -> repository.add(m));
         } else {
             log.warn("Mission with key = " + getKey(locationUpdate) + " not found in the repository.");
@@ -66,16 +65,6 @@ public class ResponderUpdateLocationSource {
             return eventSink.missionCompleted(mission).map(v -> mission);
         } else {
             //do nothing
-            return Uni.createFrom().item(mission);
-        }
-    }
-
-    private Uni<Mission> emitUpdateResponderCommand(Mission mission, JsonObject locationUpdate) {
-        if (ResponderLocationStatus.DROPPED.name().equals(locationUpdate.getString("status"))) {
-            return eventSink.responderCommand(mission, BigDecimal.valueOf(locationUpdate.getDouble("lat")),
-                    BigDecimal.valueOf(locationUpdate.getDouble("lon")), locationUpdate.getBoolean("human"))
-                    .map(v -> mission);
-        } else {
             return Uni.createFrom().item(mission);
         }
     }
