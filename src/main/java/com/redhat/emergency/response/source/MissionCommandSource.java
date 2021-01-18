@@ -122,6 +122,7 @@ public class MissionCommandSource {
         return Optional.empty();
     }
 
+    @SuppressWarnings("unchecked")
     private IncomingKafkaRecordMetadata<String, String> metadata(Message<String> missionCommandMessage) {
         return missionCommandMessage.getMetadata(IncomingKafkaRecordMetadata.class).orElse(null);
     }

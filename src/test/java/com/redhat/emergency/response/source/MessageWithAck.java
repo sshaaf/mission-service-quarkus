@@ -40,6 +40,7 @@ public class MessageWithAck<T> implements Message<T> {
         return payload;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <M> Optional<M> getMetadata(Class<? extends M> clazz) {
         return (Optional<M>) Optional.of(metadata);
