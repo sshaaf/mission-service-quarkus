@@ -64,7 +64,7 @@ public class ResponderUpdateLocationSourceTest {
         when(repository.get("incident:responder")).thenReturn(Uni.createFrom().item(Optional.of(mission)));
         when(repository.add(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository).get("incident:responder");
@@ -95,7 +95,7 @@ public class ResponderUpdateLocationSourceTest {
 
         when(eventSink.missionPickedUp(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository).get("incident:responder");
@@ -126,7 +126,7 @@ public class ResponderUpdateLocationSourceTest {
 
         when(eventSink.missionCompleted(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository).get("incident:responder");
@@ -134,6 +134,98 @@ public class ResponderUpdateLocationSourceTest {
         verify(eventSink, never()).missionPickedUp(any());
         verify(eventSink).missionCompleted(any());
         verify(repository).add(mission);
+        assertThat(message.acked(), is(true));
+    }
+
+    @Test
+    void testProcessNotACloudEvent() {
+
+        String payload = "{\n" +
+                "    \"responderId\": \"responder\",\n" +
+                "    \"missionId\": \"mission\",\n" +
+                "    \"status\": \"MOVING\",\n" +
+                "    \"lat\": 30.12345,\n" +
+                "    \"lon\": -78.98765,\n" +
+                "    \"human\": false,\n" +
+                "    \"continue\": true\n" +
+                "}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, false, "application/json", "ResponderLocationUpdatedEvent");
+        source.send(message);
+
+        verify(repository, never()).get(any());
+        verify(eventSink, never()).missionPickedUp(any());
+        verify(eventSink, never()).missionCompleted(any());
+        verify(repository, never()).add(any(Mission.class));
+        assertThat(message.acked(), is(true));
+    }
+
+    @Test
+    void testProcessWrongMessageType() {
+
+        String payload = "{\n" +
+                "    \"responderId\": \"responder\",\n" +
+                "    \"missionId\": \"mission\",\n" +
+                "    \"status\": \"MOVING\",\n" +
+                "    \"lat\": 30.12345,\n" +
+                "    \"lon\": -78.98765,\n" +
+                "    \"human\": false,\n" +
+                "    \"continue\": true\n" +
+                "}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "WrongMessageType");
+        source.send(message);
+
+        verify(repository, never()).get(any());
+        verify(eventSink, never()).missionPickedUp(any());
+        verify(eventSink, never()).missionCompleted(any());
+        verify(repository, never()).add(any(Mission.class));
+        assertThat(message.acked(), is(true));
+    }
+
+    @Test
+    void testProcessWrongDataContentType() {
+
+        String payload = "{\n" +
+                "    \"responderId\": \"responder\",\n" +
+                "    \"missionId\": \"mission\",\n" +
+                "    \"status\": \"MOVING\",\n" +
+                "    \"lat\": 30.12345,\n" +
+                "    \"lon\": -78.98765,\n" +
+                "    \"human\": false,\n" +
+                "    \"continue\": true\n" +
+                "}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/avro", "ResponderLocationUpdatedEvent");
+        source.send(message);
+
+        verify(repository, never()).get(any());
+        verify(eventSink, never()).missionPickedUp(any());
+        verify(eventSink, never()).missionCompleted(any());
+        verify(repository, never()).add(any(Mission.class));
+        assertThat(message.acked(), is(true));
+    }
+
+    @Test
+    void testProcessNoDataContentType() {
+
+        String payload = "{\n" +
+                "    \"responderId\": \"responder\",\n" +
+                "    \"missionId\": \"mission\",\n" +
+                "    \"status\": \"MOVING\",\n" +
+                "    \"lat\": 30.12345,\n" +
+                "    \"lon\": -78.98765,\n" +
+                "    \"human\": false,\n" +
+                "    \"continue\": true\n" +
+                "}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, null, "ResponderLocationUpdatedEvent");
+        source.send(message);
+
+        verify(repository, never()).get(any());
+        verify(eventSink, never()).missionPickedUp(any());
+        verify(eventSink, never()).missionCompleted(any());
+        verify(repository, never()).add(any(Mission.class));
         assertThat(message.acked(), is(true));
     }
 
@@ -150,7 +242,7 @@ public class ResponderUpdateLocationSourceTest {
                 "    \"continue\": true\n" +
                 "}";
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository, never()).get(any());
@@ -177,7 +269,7 @@ public class ResponderUpdateLocationSourceTest {
         when(repository.get("incident:responder")).thenReturn(Uni.createFrom().item(Optional.empty()));
         when(repository.add(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository).get("incident:responder");
@@ -204,7 +296,7 @@ public class ResponderUpdateLocationSourceTest {
         when(repository.get("incident:responder")).thenThrow(new RuntimeException("Exception!"));
         when(repository.add(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "ResponderLocationUpdatedEvent");
         source.send(message);
 
         verify(repository).get("incident:responder");

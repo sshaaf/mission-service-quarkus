@@ -2,6 +2,7 @@ package com.redhat.emergency.response.source;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import javax.enterprise.context.ApplicationScoped;
@@ -14,6 +15,7 @@ import com.redhat.emergency.response.model.ResponderLocationStatus;
 import com.redhat.emergency.response.repository.MissionRepository;
 import com.redhat.emergency.response.sink.EventSink;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.reactive.messaging.ce.IncomingCloudEventMetadata;
 import io.vertx.core.json.JsonObject;
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
@@ -23,6 +25,9 @@ import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class ResponderUpdateLocationSource {
+
+    static final String RESPONDER_LOCATION_UPDATED_EVENT = "ResponderLocationUpdatedEvent";
+    static final String[] ACCEPTED_MESSAGE_TYPES = {RESPONDER_LOCATION_UPDATED_EVENT};
 
     @Inject
     MissionRepository repository;
@@ -37,7 +42,7 @@ public class ResponderUpdateLocationSource {
     public Uni<CompletionStage<Void>> process(Message<String> responderLocationUpdate) {
 
         return Uni.createFrom().item(responderLocationUpdate).onItem()
-                .transform(m -> getLocationUpdate(responderLocationUpdate.getPayload()))
+                .transform(m -> getLocationUpdate(responderLocationUpdate))
                 .onItem().ifNotNull().transformToUni(this::processLocationUpdate)
                 .onItem().transform(v -> responderLocationUpdate.ack())
                 .onFailure().recoverWithItem(t -> {
@@ -77,9 +82,26 @@ public class ResponderUpdateLocationSource {
         }
     }
 
-    private JsonObject getLocationUpdate(String payload) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private JsonObject getLocationUpdate(Message<String> message) {
+        Optional<IncomingCloudEventMetadata> metadata = message.getMetadata(IncomingCloudEventMetadata.class);
+        if (metadata.isEmpty()) {
+            log.warn("Incoming message is not a CloudEvent");
+            return null;
+        }
+        IncomingCloudEventMetadata<String> cloudEventMetadata = metadata.get();
+        String dataContentType = cloudEventMetadata.getDataContentType().orElse("");
+        if (!dataContentType.equalsIgnoreCase("application/json")) {
+            log.warn("CloudEvent data content type is not specified or not 'application/json'. Message is ignored");
+            return null;
+        }
+        String type = cloudEventMetadata.getType();
+        if (!(Arrays.asList(ACCEPTED_MESSAGE_TYPES).contains(type))) {
+            log.debug("CloudEvent with type '" + type + "' is ignored");
+            return null;
+        }
         try {
-            JsonObject json = new JsonObject(payload);
+            JsonObject json = new JsonObject(message.getPayload());
             if (json.getString("responderId") == null || json.getString("responderId").isBlank()
                     || json.getString("missionId") == null || json.getString("missionId").isBlank()
                     || json.getString("incidentId") == null || json.getString("incidentId").isBlank()
