@@ -9,11 +9,11 @@ import org.apache.kafka.common.record.TimestampType;
 
 public class KafkaConsumerRecord<K,V> implements io.vertx.kafka.client.consumer.KafkaConsumerRecord<K,V> {
 
-    private String topic;
+    private final String topic;
 
-    private int partition;
+    private final int partition;
 
-    private long offset;
+    private final long offset;
 
     public KafkaConsumerRecord(String topic, int partition, long offset) {
         this.topic = topic;

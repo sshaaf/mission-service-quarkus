@@ -2,22 +2,23 @@ package com.redhat.emergency.response.source;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Named;
 
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.kafka.KafkaConsumerRebalanceListener;
-import io.vertx.kafka.client.common.TopicPartition;
-import io.vertx.mutiny.kafka.client.consumer.KafkaConsumer;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.common.TopicPartition;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,31 +41,26 @@ public class MissionSourceRebalanceListener implements KafkaConsumerRebalanceLis
 
     private final Map<TopicPartition, Pair<Long, Boolean>> offsets = new HashMap<>();
 
-    private KafkaConsumer<?, ?> consumer;
+    private Consumer<?, ?> consumer;
 
     @Override
-    public Uni<Void> onPartitionsAssigned(KafkaConsumer<?, ?> consumer, Set<TopicPartition> partitions) {
+    public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
         this.topicPartitions.addAll(partitions);
         this.consumer = consumer;
         log.info("Partition assigned. Consuming from " + topicPartitions.size() + " partitions");
         // set offsets
-        return Uni.combine().all().unis(partitions.stream().map(p -> {
-            log.info("Assigned partition for topic " + p.getTopic() + " : " + p.getPartition());
-            return consumer.endOffsets(p).onItem().invoke(o -> {
-                offsets.put(p, new ImmutablePair<>(o, false));
-                log.info("Partition " + p.getPartition() + " : end offset = " + o);
-
-            });
-        }).collect(Collectors.toList())).combinedWith(a -> null);
+        consumer.endOffsets(partitions).forEach((topicPartition, offset) -> {
+            offsets.put(topicPartition, new ImmutablePair<>(offset, false));
+            log.info("Partition " + topicPartition.partition() + " : end offset = " + offset);
+        });
     }
 
     @Override
-    public Uni<Void> onPartitionsRevoked(KafkaConsumer<?, ?> consumer, Set<TopicPartition> partitions) {
+    public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
         topicPartitions.removeAll(partitions);
         log.info("Partition revoked. Consuming from " + topicPartitions.size() + " partitions");
-        //remove offsets and
+        //remove offsets
         partitions.forEach(offsets::remove);
-        return Uni.createFrom().nullItem();
     }
 
     public Pair<Long, Boolean> setOffset(String topic, int partition, long offset) {
@@ -98,17 +94,14 @@ public class MissionSourceRebalanceListener implements KafkaConsumerRebalanceLis
 
         boolean paused = setOffset(topic, partition, offset, true).getRight();
         if (paused) {
-            return consumer.pause(topicPartition)
-                    .invoke(v -> {
-                        long totalDelay = calculateDelay(topicPartition);
-                        Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofMillis(totalDelay)).onItem().transformToUni(o -> resume(topic, partition))
-                                .subscribe().with(unused -> {
-                        });
-                        log.warn("Consumer partition " + partition + " paused for " + totalDelay + " milliseconds");
-                    }).subscribeAsCompletionStage();
-        } else {
-            return CompletableFuture.completedFuture(null);
+            consumer.pause(Collections.singleton(topicPartition));
+            long totalDelay = calculateDelay(topicPartition);
+            Uni.createFrom().nullItem().onItem().delayIt().by(Duration.ofMillis(totalDelay)).onItem().transformToUni(o -> resume(topic, partition))
+                    .subscribe().with(unused -> {
+            });
+            log.warn("Consumer partition " + partition + " paused for " + totalDelay + " milliseconds");
         }
+        return CompletableFuture.completedFuture(null);
     }
 
     public Uni<Void> resume(String topic, int partition) {
@@ -118,9 +111,10 @@ public class MissionSourceRebalanceListener implements KafkaConsumerRebalanceLis
             return Uni.createFrom().nullItem();
         }
         long offset = setOffset(topic, partition, false).getLeft();
-        return consumer.seek(topicPartition, offset)
-                .onItem().transformToUni(v -> consumer.resume(topicPartition))
-                .onItem().invoke(v -> log.info("Consumer resuming partition " + partition + " from offset " + offset));
+        consumer.seek(topicPartition, offset);
+        consumer.resume(Collections.singleton(topicPartition));
+        log.info("Consumer resuming partition " + partition + " from offset " + offset);
+        return Uni.createFrom().nullItem();
     }
 
     private long calculateDelay(TopicPartition partition) {

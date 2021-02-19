@@ -70,11 +70,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessage()  {
 
-        String payload = "{\"id\":\"91cf5e82-8135-476d-ade4-5fe00dca2cc6\",\"messageType\":\"CreateMissionCommand\","
-                + "\"invokingService\":\"IncidentProcessService\",\"timestamp\":1593363522344,\"body\": "
-                + "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
                 + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}}";
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
 
         MissionStep missionStep1 = new MissionStep();
         MissionStep missionStep2 = new MissionStep();
@@ -84,7 +82,7 @@ public class MessageCommandSourceTest {
         when(repository.add(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
         when(eventSink.missionStarted(any(Mission.class))).thenReturn(Uni.createFrom().emitter(emitter -> emitter.complete(null)));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "CreateMissionCommand");
         source.send(message);
 
         assertThat(message.acked(), is(true));
@@ -131,15 +129,64 @@ public class MessageCommandSourceTest {
     }
 
     @Test
-    void testProcessMessageBadMessageType() {
+    void testProcessMessageNotACloudEvent() {
 
-        String payload = "{\"id\":\"91cf5e82-8135-476d-ade4-5fe00dca2cc6\",\"messageType\":\"WrongMessageType\","
-                + "\"invokingService\":\"IncidentProcessService\",\"timestamp\":1593363522344,\"body\": "
-                + "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
                 + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}}";
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, false, "application/json", "CreateMissionCommand");
+        source.send(message);
+
+        assertThat(message.acked(), is(true));
+        verify(rebalanceListener).setOffset("topic", 10, 20);
+        verify(repository, never()).add(any(Mission.class));
+        verify(routePlanner, never()).getDirections(any(Location.class), any(Location.class), any(Location.class));
+        verify(eventSink, never()).missionStarted(any(Mission.class));
+    }
+
+    @Test
+    void testProcessMessageWrongDataContentType() {
+
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/avro", "CreateMissionCommand");
+        source.send(message);
+
+        assertThat(message.acked(), is(true));
+        verify(rebalanceListener).setOffset("topic", 10, 20);
+        verify(repository, never()).add(any(Mission.class));
+        verify(routePlanner, never()).getDirections(any(Location.class), any(Location.class), any(Location.class));
+        verify(eventSink, never()).missionStarted(any(Mission.class));
+    }
+
+    @Test
+    void testProcessMessageNoDataContentType() {
+
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, null, "CreateMissionCommand");
+        source.send(message);
+
+        assertThat(message.acked(), is(true));
+        verify(rebalanceListener).setOffset("topic", 10, 20);
+        verify(repository, never()).add(any(Mission.class));
+        verify(routePlanner, never()).getDirections(any(Location.class), any(Location.class), any(Location.class));
+        verify(eventSink, never()).missionStarted(any(Mission.class));
+    }
+
+    @Test
+    void testProcessMessageWrongMessageType() {
+
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "WrongMessageType");
         source.send(message);
 
         assertThat(message.acked(), is(true));
@@ -152,13 +199,11 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageMissingFields()  {
 
-        String payload = "{\"id\":\"91cf5e82-8135-476d-ade4-5fe00dca2cc6\",\"messageType\":\"WrongMessageType\","
-                + "\"invokingService\":\"IncidentProcessService\",\"timestamp\":1593363522344,\"body\": "
-                + "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\","
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\","
                 + "\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}}";
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "CreateMissionCommand");
         source.send(message);
 
         assertThat(message.acked(), is(true));
@@ -171,18 +216,16 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageWhenRoutePlannerException()  {
 
-        String payload = "{\"id\":\"91cf5e82-8135-476d-ade4-5fe00dca2cc6\",\"messageType\":\"CreateMissionCommand\","
-                + "\"invokingService\":\"IncidentProcessService\",\"timestamp\":1593363522344,\"body\": "
-                + "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
                 + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}}";
+                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
 
         when(routePlanner.getDirections(any(Location.class), any(Location.class), any(Location.class)))
                 .thenThrow(new RoutePlannerException("no route"));
 
         when(rebalanceListener.pause(any(String.class), any(Integer.class), any(Long.class))).thenReturn(CompletableFuture.completedFuture(null));
 
-        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20);
+        MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "CreateMissionCommand");
         source.send(message);
 
         assertThat(message.acked(), is(false));

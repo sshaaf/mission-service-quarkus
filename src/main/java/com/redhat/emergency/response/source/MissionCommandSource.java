@@ -12,6 +12,7 @@ import com.redhat.emergency.response.model.MissionStatus;
 import com.redhat.emergency.response.repository.MissionRepository;
 import com.redhat.emergency.response.sink.EventSink;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.reactive.messaging.ce.IncomingCloudEventMetadata;
 import io.smallrye.reactive.messaging.kafka.IncomingKafkaRecordMetadata;
 import io.vertx.core.json.JsonObject;
 import org.eclipse.microprofile.reactive.messaging.Acknowledgment;
@@ -52,8 +53,8 @@ public class MissionCommandSource {
                     }
                     return mcm;
                 })
-                .onItem().transform(mcm -> accept(missionCommandMessage.getPayload()))
-                .onItem().transform(o -> o.flatMap(j -> validate(j.getJsonObject("body"))).orElseThrow(MessageIgnoredException::new))
+                .onItem().transform(mcm -> accept(missionCommandMessage))
+                .onItem().transform(o -> o.flatMap(this::validate).orElseThrow(MessageIgnoredException::new))
                 .onItem().transform(m -> m.status(MissionStatus.CREATED))
                 .onItem().transformToUni(this::addRoute)
                 .onItem().transformToUni(this::addToRepositoryAsync)
@@ -88,24 +89,31 @@ public class MissionCommandSource {
         return eventSink.missionStarted(mission).map(v -> mission);
     }
 
-    private Optional<JsonObject> accept(String messageAsJson) {
-        try {
-            JsonObject json = new JsonObject(messageAsJson);
-            String messageType = json.getString("messageType");
-            if (Arrays.asList(ACCEPTED_MESSAGE_TYPES).contains(messageType) && json.containsKey("body")) {
-                log.debug("Processing message: " + json.toString());
-                return Optional.of(json);
-            }
-            log.debug("Message with type '" + messageType + "' is ignored");
-        } catch (Exception e) {
-            log.warn("Unexpected message which is not JSON or without 'messageType' field.");
-            log.warn("Message: " + messageAsJson);
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Optional<String> accept(Message<String> message) {
+
+        Optional<IncomingCloudEventMetadata> metadata = message.getMetadata(IncomingCloudEventMetadata.class);
+        if (metadata.isEmpty()) {
+            log.warn("Incoming message is not a CloudEvent");
+            return Optional.empty();
         }
-        return Optional.empty();
+        IncomingCloudEventMetadata<String> cloudEventMetadata = metadata.get();
+        String dataContentType = cloudEventMetadata.getDataContentType().orElse("");
+        if (!dataContentType.equalsIgnoreCase("application/json")) {
+            log.warn("CloudEvent data content type is not specified or not 'application/json'. Message is ignored");
+            return Optional.empty();
+        }
+        String type = cloudEventMetadata.getType();
+        if (!(Arrays.asList(ACCEPTED_MESSAGE_TYPES).contains(type))) {
+            log.debug("CloudEvent with type '" + type + "' is ignored");
+            return Optional.empty();
+        }
+        return Optional.of(message.getPayload());
     }
 
-    private Optional<Mission> validate(JsonObject json) {
+    private Optional<Mission> validate(String jsonAsString) {
         try {
+            JsonObject json = new JsonObject(jsonAsString);
             Optional<Mission> mission = Optional.of(json.mapTo(Mission.class))
                     .filter(m -> m.getIncidentId() != null && !(m.getIncidentId().isBlank()))
                     .filter(m -> m.getResponderId() != null && !(m.getResponderId().isBlank()))
@@ -122,6 +130,7 @@ public class MissionCommandSource {
         return Optional.empty();
     }
 
+    @SuppressWarnings("unchecked")
     private IncomingKafkaRecordMetadata<String, String> metadata(Message<String> missionCommandMessage) {
         return missionCommandMessage.getMetadata(IncomingKafkaRecordMetadata.class).orElse(null);
     }
