@@ -18,6 +18,7 @@
     <quarkus.platform.version>1.10.3.Final</quarkus.platform.version>
     <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
     <commons-lang.version>3.9</commons-lang.version>
+    <commons-text.version>1.8</commons-text.version>
     <mapbox.version>4.5.0</mapbox.version>
     <wiremock.version>2.26.3</wiremock.version>
     <smallrye.version>2.5.0</smallrye.version>
@@ -68,6 +69,11 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
       <version>${commons-lang.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+      <version>${commons-text.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

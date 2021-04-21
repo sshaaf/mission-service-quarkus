@@ -70,9 +70,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessage()  {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MissionStep missionStep1 = new MissionStep();
         MissionStep missionStep2 = new MissionStep();
@@ -131,9 +131,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageNotACloudEvent() {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, false, "application/json", "CreateMissionCommand");
         source.send(message);
@@ -148,9 +148,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageWrongDataContentType() {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/avro", "CreateMissionCommand");
         source.send(message);
@@ -165,9 +165,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageNoDataContentType() {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, null, "CreateMissionCommand");
         source.send(message);
@@ -182,9 +182,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageWrongMessageType() {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "WrongMessageType");
         source.send(message);
@@ -200,8 +200,8 @@ public class MessageCommandSourceTest {
     void testProcessMessageMissingFields()  {
 
         String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\","
-                + "\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+                + "\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         MessageWithAck<String> message = MessageWithAck.of(payload, "topic", 10, 20, true, "application/json", "CreateMissionCommand");
         source.send(message);
@@ -216,9 +216,9 @@ public class MessageCommandSourceTest {
     @Test
     void testProcessMessageWhenRoutePlannerException()  {
 
-        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":\"40.12345\","
-                + "\"responderStartLong\":\"-80.98765\",\"incidentLat\":\"30.12345\",\"incidentLong\":\"-70.98765\","
-                + "\"destinationLat\":\"50.12345\",\"destinationLong\":\"-90.98765\",\"processId\":\"0\"}";
+        String payload = "{\"incidentId\":\"incident123\",\"responderId\":\"responder123\",\"responderStartLat\":40.12345,"
+                + "\"responderStartLong\":-80.98765,\"incidentLat\":30.12345,\"incidentLong\":-70.98765,"
+                + "\"destinationLat\":50.12345,\"destinationLong\":-90.98765,\"processId\":\"0\"}";
 
         when(routePlanner.getDirections(any(Location.class), any(Location.class), any(Location.class)))
                 .thenThrow(new RoutePlannerException("no route"));
